@@ -11,7 +11,6 @@ const app = express()
 ;(async () => {
   await mongo.connect()
   const db = mongo.db('geophoto')
-
   const bucket = new GridFSBucket(db, {
     bucketName: 'photos'
   })
@@ -35,6 +34,7 @@ const app = express()
         fileSize: 500000
       }
     }).single('photo'),
+
     (req, res) => {
       if (!req.file) return res.status(400).end('No file')
 
@@ -59,8 +59,8 @@ const app = express()
         metadata: {
           contentType: type.mime,
           coordinates: {
-            longitude: (GPSLongitude[0] + (GPSLongitude[1] / 60) + (GPSLongitude[2] / 3600)) * (GPSLongitudeRef === 'N' ? 1 : -1),
-            latitude: (GPSLatitude[0] + (GPSLatitude[1] / 60) + (GPSLatitude[2] / 3600)) * (GPSLatitudeRef === 'E' ? 1 : -1)
+            longitude: (GPSLongitude[0] + (GPSLongitude[1] / 60) + (GPSLongitude[2] / 3600)) * (GPSLongitudeRef === 'E' ? 1 : -1),
+            latitude: (GPSLatitude[0] + (GPSLatitude[1] / 60) + (GPSLatitude[2] / 3600)) * (GPSLatitudeRef === 'N' ? 1 : -1)
           },
           name: req.body.name,
           description: req.body.description
