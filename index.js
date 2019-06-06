@@ -1,6 +1,6 @@
 require('dotenv').config()
 const express = require('express')
-const { MongoClient, GridFSBucket } = require('mongodb')
+const { MongoClient, GridFSBucket, ObjectID } = require('mongodb')
 const multer = require('multer')
 const fileType = require('file-type')
 const exif = require('jpeg-exif')
@@ -17,6 +17,16 @@ const app = express()
   })
 
   app.get('/', (req, res) => res.end('kek'))
+
+  app.get('/:id', (req, res) => {
+    try {
+      const id = new ObjectID(req.params.id)
+      const downloadStream = bucket.openDownloadStream(id)
+      downloadStream.pipe(res)
+    } catch (e) {
+      res.status(400).end(e.message)
+    }
+  })
 
   app.post('/',
     multer({
@@ -37,15 +47,14 @@ const app = express()
       if (!(
         exifData.GPSInfo &&
         exifData.GPSInfo.GPSLatitudeRef &&
-        exifData.GPSInfo.GPSLatitude &&
+        'GPSLatitude' in exifData.GPSInfo &&
         exifData.GPSInfo.GPSLongitudeRef &&
-        exifData.GPSInfo.GPSLongitude
+        'GPSLongitude' in exifData.GPSInfo
       )) res.status(400).end('File has no geolocation tag')
 
       const { GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef } = exifData.GPSInfo
 
-      debugger
-      const stream = bucket.openUploadStream('photo', {
+      const stream = bucket.openUploadStream(req.body.name || 'photo', {
         disableMD5: true,
         metadata: {
           contentType: type.mime,
@@ -56,6 +65,14 @@ const app = express()
           name: req.body.name,
           description: req.body.description
         }
+      })
+
+      stream.end(req.file.buffer, () => {
+        console.log('Upload successful')
+        // const downloadStream = bucket.openDownloadStream(stream.id)
+        // downloadStream.pipe(res)
+        // res.on('finish', () => console.log('sent'))
+        res.status(201).end()
       })
     })
 
