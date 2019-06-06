@@ -15,7 +15,30 @@ const app = express()
     bucketName: 'photos'
   })
 
-  app.get('/', (req, res) => res.end('kek'))
+  app.get('/', async (req, res) => {
+    // photos.files must have text index on metadata.name and metadata.description
+    // and 2dsphere index on metadata.coordinates
+    if (req.query.text) {
+      const results = await bucket
+        .find({
+          $text: {
+            $search: req.query.text,
+            $caseSensitive: false
+          }
+        })
+        .toArray()
+      res.send(results)
+    } else if (req.query.coordinates) {
+      const results = await bucket
+        .find({
+          'metadata.coordinates': {
+            $nearSphere: [+req.query.coordinates.longitude, +req.query.coordinates.latitude]
+          }
+        })
+        .toArray()
+      res.send(results)
+    }
+  })
 
   app.get('/:id', (req, res) => {
     try {
@@ -54,7 +77,7 @@ const app = express()
 
       const { GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef } = exifData.GPSInfo
 
-      const stream = bucket.openUploadStream(req.body.name || 'photo', {
+      const stream = bucket.openUploadStream(req.file.originalname || 'photo', {
         disableMD5: true,
         metadata: {
           contentType: type.mime,
